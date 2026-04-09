@@ -80,7 +80,6 @@ export default function AdminAttendanceLogsPage() {
               <thead>
                 <tr>
                   <th>Faculty Name</th>
-                  <th>Department</th>
                   <th>Session</th>
                   <th>Attendance Type</th>
                   <th>Time</th>
@@ -91,7 +90,6 @@ export default function AdminAttendanceLogsPage() {
                 {records.map((record) => (
                   <tr key={record.id}>
                     <td>{buildFacultyName(record)}</td>
-                    <td>{record.department_name}</td>
                     <td>{record.session_name}</td>
                     <td>{record.attendance_type}</td>
                     <td>{formatDateTime(record.check_time)}</td>

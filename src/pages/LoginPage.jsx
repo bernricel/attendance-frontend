@@ -81,8 +81,8 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      title="Faculty Attendance Portal"
-      subtitle="Secure sign-in for university faculty and administrators."
+      title="CIT Faculty Attendance Portal"
+      subtitle="Secure sign-in for CIT faculty and administrators."
       sideNote={
         <p>
           Access is limited to accounts ending with <strong>@ua.edu.ph</strong>.

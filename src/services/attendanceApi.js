@@ -10,6 +10,11 @@ export async function getAdminSessions() {
   return response.data
 }
 
+export async function getAdminSessionQrStatus(sessionId) {
+  const response = await api.get(`/admin/sessions/${sessionId}/qr-status`)
+  return response.data
+}
+
 export async function getAttendanceByDate(date) {
   const response = await api.get('/admin/attendance-by-date', { params: { date } })
   return response.data

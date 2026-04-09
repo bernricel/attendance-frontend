@@ -1,12 +1,10 @@
 ﻿import { NavLink, useNavigate } from 'react-router-dom'
-// 1. ADDED: Import the icons
 import { FiPieChart, FiClock } from 'react-icons/fi'
 import { ROUTES } from '../../constants/routes'
 import { clearAuthSession, getStoredAuth } from '../../services/authStorage'
 import { useResponsiveSidebar } from '../../hooks/useResponsiveSidebar'
 import { getDisplayName } from '../../utils/userName'
 
-// 2. ADDED: Icons and color classes to your existing array
 const facultyNav = [
   { to: ROUTES.FACULTY_DASHBOARD, label: 'Dashboard', icon: <FiPieChart />, colorClass: 'icon-orange' },
   { to: ROUTES.FACULTY_HISTORY, label: 'Attendance History', icon: <FiClock />, colorClass: 'icon-red' },
@@ -34,7 +32,7 @@ export default function FacultyLayout({ title, subtitle, actions, children }) {
         id="faculty-sidebar-nav"
         className={`faculty-sidebar ${isSidebarOpen ? 'is-open' : ''}`}
       >
-        <div className="faculty-brand">Faculty Portal</div>
+        <div className="faculty-brand">CIT Faculty Portal</div>
         <nav className="faculty-nav">
           {facultyNav.map((item) => (
             <NavLink
@@ -43,7 +41,6 @@ export default function FacultyLayout({ title, subtitle, actions, children }) {
               className={({ isActive }) => `faculty-nav-item${isActive ? ' active' : ''}`}
               onClick={closeSidebar}
             >
-              {/* 3. ADDED: The icon span right before the text */}
               <span className={`nav-icon ${item.colorClass}`}>
                 {item.icon}
               </span>
@@ -73,7 +70,7 @@ export default function FacultyLayout({ title, subtitle, actions, children }) {
           <div className="faculty-topbar-right">
             <div className="faculty-user-badge">
               <strong>{getDisplayName(user, 'Faculty')}</strong>
-              <span>{user?.department || '-'}</span>
+              <span>CIT Faculty</span>
             </div>
             <button type="button" className="ghost-btn compact" onClick={handleLogout}>
               Logout

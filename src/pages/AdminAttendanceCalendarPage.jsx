@@ -141,7 +141,7 @@ export default function AdminAttendanceCalendarPage() {
                       {record.user_first_name} {record.user_last_name}
                     </h3>
                     <p>
-                      {record.department_name} | {record.session_name} | {record.attendance_type}
+                      {record.session_name} | {record.attendance_type}
                     </p>
                   </div>
                   <div className="chip">{formatDateTime(record.check_time)}</div>

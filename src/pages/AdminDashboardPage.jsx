@@ -74,9 +74,7 @@ export default function AdminDashboardPage() {
                     <article key={session.id} className="session-item">
                       <div>
                         <h3>{session.name}</h3>
-                        <p>
-                          {session.department?.name} | {session.session_type}
-                        </p>
+                        <p>{session.session_type}</p>
                       </div>
                       <div className={`chip ${session.is_active ? 'ok' : 'muted'}`}>
                         {session.is_active ? 'Active' : 'Inactive'}
@@ -98,9 +96,7 @@ export default function AdminDashboardPage() {
                         <h3>
                           {record.user_first_name} {record.user_last_name}
                         </h3>
-                        <p>
-                          {record.department_name} | {record.session_name}
-                        </p>
+                        <p>{record.session_name}</p>
                       </div>
                       <div className="chip">{formatDateTime(record.check_time)}</div>
                     </article>

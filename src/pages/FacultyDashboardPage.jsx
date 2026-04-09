@@ -31,10 +31,6 @@ export default function FacultyDashboardPage() {
               <span>School ID</span>
               <strong>{user?.school_id || '-'}</strong>
             </div>
-            <div className="summary-item">
-              <span>Department</span>
-              <strong>{user?.department || '-'}</strong>
-            </div>
           </div>
         </section>
 
