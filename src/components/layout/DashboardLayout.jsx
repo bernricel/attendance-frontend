@@ -73,7 +73,7 @@ export default function DashboardLayout({
         <div className={brandClassName}>
           <img src={citLogo} alt="CIT logo" className="brand-logo" />
           <div className="brand-copy">
-            <strong>CIT Faculty Attendance</strong>
+            <strong>AttendIT</strong>
             <span>{brandSubtitle}</span>
           </div>
         </div>
