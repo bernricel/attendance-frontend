@@ -71,7 +71,7 @@ export default function DashboardLayout({
         className={`${sidebarClassName} ${isSidebarOpen ? "is-open" : ""}`}
       >
         <div className={brandClassName}>
-          <img src={citLogo} alt="CITCLS logo" className="brand-logo" />
+          <img src={citLogo} alt="CIT logo" className="brand-logo" />
           <div className="brand-copy">
             <strong>CIT Faculty Attendance</strong>
             <span>{brandSubtitle}</span>
