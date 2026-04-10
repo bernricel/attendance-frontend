@@ -954,10 +954,70 @@ select option {
 .qr-meta-actions {
   margin-top: 12px;
   margin-bottom: 8px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .qr-meta-actions .ghost-btn {
   padding: 0 16px;
+}
+
+.danger-btn {
+  border-color: rgba(255, 92, 92, 0.45);
+  color: #ff9d9d;
+}
+
+.danger-btn:hover {
+  background: rgba(255, 92, 92, 0.14);
+}
+
+.confirm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.68);
+  display: grid;
+  place-items: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.confirm-modal {
+  width: min(540px, 100%);
+  background: rgba(0, 20, 45, 0.94);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+}
+
+.confirm-modal h3 {
+  margin: 0;
+  color: var(--ua-gold);
+}
+
+.danger-text {
+  margin: 0;
+  color: #ffb5b5;
+  font-weight: 600;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.danger-confirm-btn {
+  background: #dc2626;
+  color: #fff;
+  margin-top: 0;
+}
+
+.danger-confirm-btn:hover {
+  background: #b91c1c;
 }
 
 .qr-display-screen {

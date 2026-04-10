@@ -23,6 +23,22 @@ export async function getAttendanceByDate(date) {
   return response.data
 }
 
+export async function getFacultyAttendanceRecords(facultyId = '') {
+  const params = {}
+  if (facultyId) {
+    params.faculty_id = facultyId
+  }
+  const response = await api.get('/admin/faculty-attendance', { params })
+  return response.data
+}
+
+export async function deleteAttendanceSession(sessionId, password) {
+  const response = await api.delete(`/admin/sessions/${sessionId}`, {
+    data: { password },
+  })
+  return response.data
+}
+
 export async function verifyAttendanceSignature(attendanceRecordId) {
   // Calls backend DSA verification endpoint for one attendance record.
   // Response includes: { is_valid: true/false }.
