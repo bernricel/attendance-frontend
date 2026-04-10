@@ -282,8 +282,6 @@ export default function AdminCreateSessionPage() {
             </p>
           ) : null}
 
-          <p className="subtle-note">Department is fixed to CIT for this deployment.</p>
-
           <button className="primary-btn" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Creating...' : form.is_recurring ? 'Create Recurring Sessions' : 'Create Session'}
           </button>

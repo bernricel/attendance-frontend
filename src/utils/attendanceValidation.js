@@ -107,11 +107,16 @@ export function buildSessionPayload(form) {
     }
   }
 
+  const recurrenceDays = Array.from(resolveWeekdays(form.recurrence_pattern, form.recurrence_days)).sort(
+    (a, b) => a - b
+  )
+
   return {
     ...basePayload,
     is_recurring: true,
     recurrence_pattern: form.recurrence_pattern,
-    recurrence_days: form.recurrence_pattern === 'custom' ? form.recurrence_days : [],
+    // Always send concrete weekdays so backend generation stays deterministic.
+    recurrence_days: recurrenceDays,
     recurrence_start_date: form.recurrence_start_date,
     recurrence_end_date: form.recurrence_end_date,
   }
