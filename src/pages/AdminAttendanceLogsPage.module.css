@@ -1,4 +1,42 @@
-.logsDatePicker {
+﻿.controlsWrap {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.primaryFilter {
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sessionHint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.secondaryFilters {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.quickFilterRow,
+.actionButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .responsiveBlock {
@@ -13,6 +51,44 @@
   display: none;
 }
 
+.facultyName,
+.sessionName {
+  margin: 0;
+  font-weight: 700;
+  color: #fff;
+}
+
+.facultyEmail,
+.sessionDate {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.on_time {
+  background: rgba(46, 204, 113, 0.2);
+  border-color: rgba(46, 204, 113, 0.4);
+  color: #2ecc71;
+}
+
+.late {
+  background: rgba(255, 164, 27, 0.2);
+  border-color: rgba(255, 164, 27, 0.45);
+  color: #ffba49;
+}
+
+.checked_out {
+  background: rgba(90, 187, 255, 0.2);
+  border-color: rgba(90, 187, 255, 0.45);
+  color: #8cc9ff;
+}
+
+.incomplete {
+  background: rgba(255, 92, 92, 0.2);
+  border-color: rgba(255, 92, 92, 0.4);
+  color: #ff8b8b;
+}
+
 .mobileCards {
   display: grid;
   gap: 12px;
@@ -22,24 +98,9 @@
   border: 1px solid var(--glass-border);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
-  overflow: hidden;
-}
-
-.mobileCardToggle {
-  width: 100%;
-  border: 0;
-  background: transparent;
   padding: 14px;
-  text-align: left;
   display: grid;
-  gap: 8px;
-  cursor: pointer;
-  color: inherit;
-}
-
-.mobileCardToggle:focus-visible {
-  outline: 2px solid var(--ua-gold);
-  outline-offset: -2px;
+  gap: 6px;
 }
 
 .cardTitle {
@@ -52,33 +113,27 @@
 .cardMeta {
   margin: 0;
   color: var(--muted);
-  font-size: 0.92rem;
-}
-
-.cardSummaryRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.cardTime {
-  color: rgba(255, 255, 255, 0.9);
   font-size: 0.9rem;
-  overflow-wrap: anywhere;
 }
 
-.cardDetail {
+.cardDetailGrid {
+  margin-top: 8px;
   border-top: 1px solid var(--glass-border);
-  padding: 12px 14px 14px;
+  padding-top: 8px;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
-.cardDetail p {
+.cardDetailGrid p {
   margin: 0;
   color: rgba(255, 255, 255, 0.92);
   font-size: 0.9rem;
+}
+
+@media (max-width: 1100px) {
+  .secondaryFilters {
+    grid-template-columns: repeat(2, minmax(170px, 1fr));
+  }
 }
 
 @media (max-width: 1023px) {
@@ -90,3 +145,14 @@
     display: block;
   }
 }
+
+@media (max-width: 720px) {
+  .secondaryFilters {
+    grid-template-columns: 1fr;
+  }
+
+  .actionsRow {
+    align-items: stretch;
+  }
+}
+

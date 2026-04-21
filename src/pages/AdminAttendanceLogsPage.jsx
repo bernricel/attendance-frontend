@@ -1,147 +1,382 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import AdminPanel from '../components/admin/AdminPanel'
 import { DataEmpty, DataError, DataLoading } from '../components/admin/DataState'
 import LayoutPageMeta from '../components/layout/LayoutPageMeta'
 import {
-  getAttendanceByDate,
+  exportAdminAttendanceSheetCsv,
+  getAdminAttendanceSheet,
+  getAdminSessions,
   getFacultyAttendanceRecords,
-  verifyAttendanceSignature,
 } from '../services/attendanceApi'
 import { getApiErrorMessage } from '../utils/apiError'
-import { formatDateTime, toIsoDate } from '../utils/dateTime'
+import { formatDateTime } from '../utils/dateTime'
 import common from '../styles/common.module.css'
 import styles from './AdminAttendanceLogsPage.module.css'
 
-function buildFacultyName(record) {
-  return `${record.user_first_name || ''} ${record.user_last_name || ''}`.trim() || 'Unknown'
+const ATTENDANCE_STATUS_OPTIONS = [
+  { value: '', label: 'All attendance statuses' },
+  { value: 'on_time', label: 'On Time' },
+  { value: 'late', label: 'Late' },
+  { value: 'checked_out', label: 'Checked Out' },
+  { value: 'incomplete', label: 'Incomplete' },
+]
+
+const SIGNATURE_STATUS_OPTIONS = [
+  { value: '', label: 'All signature statuses' },
+  { value: 'valid', label: 'Valid' },
+  { value: 'invalid', label: 'Invalid' },
+  { value: 'partial', label: 'Partial' },
+]
+
+const SORT_BY_OPTIONS = [
+  { value: 'faculty_name', label: 'Faculty Name' },
+  { value: 'time_in', label: 'Time In' },
+  { value: 'time_out', label: 'Time Out' },
+  { value: 'attendance_status', label: 'Attendance Status' },
+  { value: 'signature_status', label: 'Signature Status' },
+]
+
+function toSessionLabel(session) {
+  const startDate = formatDateTime(session.start_time)
+  return `${session.name} • ${startDate}`
+}
+
+function normalizeFilename(contentDisposition) {
+  const match = /filename="?([^\"]+)"?/i.exec(contentDisposition || '')
+  return match ? match[1] : 'attendance_sheet.csv'
+}
+
+function downloadBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileName
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  URL.revokeObjectURL(url)
 }
 
 export default function AdminAttendanceLogsPage() {
-  const [selectedDate, setSelectedDate] = useState(toIsoDate())
-  const [records, setRecords] = useState([])
-  const [verificationMap, setVerificationMap] = useState({})
+  const [sessions, setSessions] = useState([])
+  const [faculties, setFaculties] = useState([])
+  const [selectedSessionId, setSelectedSessionId] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedFacultyId, setSelectedFacultyId] = useState('')
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('')
+  const [signatureStatusFilter, setSignatureStatusFilter] = useState('')
+  const [sortBy, setSortBy] = useState('faculty_name')
+  const [sortOrder, setSortOrder] = useState('asc')
+  const [rows, setRows] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [faculties, setFaculties] = useState([])
-  const [selectedFacultyId, setSelectedFacultyId] = useState('')
-  const [facultyRecords, setFacultyRecords] = useState([])
-  const [selectedFaculty, setSelectedFaculty] = useState(null)
-  const [isFacultyLoading, setIsFacultyLoading] = useState(true)
-  const [facultyError, setFacultyError] = useState('')
-  const [expandedDailyCardId, setExpandedDailyCardId] = useState(null)
-  const [expandedFacultyCardKey, setExpandedFacultyCardKey] = useState('')
-
-  const loadLogs = async (date) => {
-    setIsLoading(true)
-    setError('')
-    try {
-      const data = await getAttendanceByDate(date)
-      const fetchedRecords = data.records || []
-      setRecords(fetchedRecords)
-
-      // For each record, ask backend to verify DSA signature integrity.
-      const verifications = await Promise.all(
-        fetchedRecords.map(async (record) => {
-          try {
-            const result = await verifyAttendanceSignature(record.id)
-            // Map backend boolean to UI-friendly status chip text.
-            return [record.id, result.is_valid ? 'valid' : 'invalid']
-          } catch {
-            // Network/server issue while verifying this specific row.
-            return [record.id, 'unknown']
-          }
-        }),
-      )
-      setVerificationMap(Object.fromEntries(verifications))
-    } catch (apiError) {
-      setError(getApiErrorMessage(apiError, 'Failed to load attendance logs.'))
-      setRecords([])
-      setVerificationMap({})
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
-    loadLogs(selectedDate)
-  }, [selectedDate])
-
-  useEffect(() => {
-    const loadFacultyOptions = async () => {
-      setIsFacultyLoading(true)
-      setFacultyError('')
+    const loadMetadata = async () => {
+      setIsLoading(true)
+      setError('')
       try {
-        const data = await getFacultyAttendanceRecords()
-        const options = data.faculties || []
-        setFaculties(options)
-        if (options.length > 0) {
-          setSelectedFacultyId(String(options[0].id))
+        const [sessionsData, facultiesData] = await Promise.all([
+          getAdminSessions(),
+          getFacultyAttendanceRecords(),
+        ])
+
+        const fetchedSessions = sessionsData.sessions || []
+        const fetchedFaculties = facultiesData.faculties || []
+        setSessions(fetchedSessions)
+        setFaculties(fetchedFaculties)
+
+        if (fetchedSessions.length > 0) {
+          setSelectedSessionId(String(fetchedSessions[0].id))
         }
       } catch (apiError) {
-        setFacultyError(getApiErrorMessage(apiError, 'Failed to load faculty members.'))
+        setError(getApiErrorMessage(apiError, 'Failed to load session and faculty options.'))
       } finally {
-        setIsFacultyLoading(false)
+        setIsLoading(false)
       }
     }
 
-    loadFacultyOptions()
+    loadMetadata()
   }, [])
 
   useEffect(() => {
-    if (!selectedFacultyId) {
-      setFacultyRecords([])
-      setSelectedFaculty(null)
+    if (!selectedSessionId && !selectedDate && !selectedFacultyId && sessions.length > 0) {
       return
     }
 
-    const loadFacultyHistory = async () => {
-      setIsFacultyLoading(true)
-      setFacultyError('')
+    const loadAttendanceSheet = async () => {
+      setIsLoading(true)
+      setError('')
       try {
-        const data = await getFacultyAttendanceRecords(selectedFacultyId)
-        setFacultyRecords(data.records || [])
-        setSelectedFaculty(data.faculty || null)
+        const params = {
+          sort_by: sortBy,
+          sort_order: sortOrder,
+        }
+        if (selectedSessionId) params.session_id = selectedSessionId
+        if (selectedDate) params.date = selectedDate
+        if (selectedFacultyId) params.faculty_id = selectedFacultyId
+        if (attendanceStatusFilter) params.attendance_status = attendanceStatusFilter
+        if (signatureStatusFilter) params.signature_status = signatureStatusFilter
+
+        const data = await getAdminAttendanceSheet(params)
+        setRows(data.rows || [])
       } catch (apiError) {
-        setFacultyError(getApiErrorMessage(apiError, 'Failed to load faculty attendance history.'))
-        setFacultyRecords([])
-        setSelectedFaculty(null)
+        setRows([])
+        setError(getApiErrorMessage(apiError, 'Failed to load attendance sheet.'))
       } finally {
-        setIsFacultyLoading(false)
+        setIsLoading(false)
       }
     }
 
-    loadFacultyHistory()
-  }, [selectedFacultyId])
+    loadAttendanceSheet()
+  }, [
+    selectedSessionId,
+    selectedDate,
+    selectedFacultyId,
+    attendanceStatusFilter,
+    signatureStatusFilter,
+    sortBy,
+    sortOrder,
+    sessions.length,
+  ])
 
-  const hasData = useMemo(() => records.length > 0, [records])
-  const hasFacultyData = useMemo(() => facultyRecords.length > 0, [facultyRecords])
+  const selectedSession = useMemo(
+    () => sessions.find((session) => String(session.id) === String(selectedSessionId)) || null,
+    [sessions, selectedSessionId],
+  )
+
+  const hasRows = rows.length > 0
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    setError('')
+    try {
+      const params = {
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      }
+      if (selectedSessionId) params.session_id = selectedSessionId
+      if (selectedDate) params.date = selectedDate
+      if (selectedFacultyId) params.faculty_id = selectedFacultyId
+      if (attendanceStatusFilter) params.attendance_status = attendanceStatusFilter
+      if (signatureStatusFilter) params.signature_status = signatureStatusFilter
+
+      const result = await exportAdminAttendanceSheetCsv(params)
+      downloadBlob(result.blob, normalizeFilename(result.contentDisposition))
+    } catch (apiError) {
+      setError(getApiErrorMessage(apiError, 'Failed to export CSV.'))
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const applyQuickFilter = (filterName) => {
+    if (filterName === 'late') {
+      setAttendanceStatusFilter('late')
+      return
+    }
+    if (filterName === 'on_time') {
+      setAttendanceStatusFilter('on_time')
+      return
+    }
+    if (filterName === 'missing_checkout') {
+      setAttendanceStatusFilter('incomplete')
+      return
+    }
+    if (filterName === 'valid_signature') {
+      setSignatureStatusFilter('valid')
+    }
+  }
+
+  const resetSecondaryFilters = () => {
+    setSelectedDate('')
+    setSelectedFacultyId('')
+    setAttendanceStatusFilter('')
+    setSignatureStatusFilter('')
+    setSortBy('faculty_name')
+    setSortOrder('asc')
+  }
 
   return (
     <>
       <LayoutPageMeta
         title="Attendance Logs"
-        subtitle="Daily attendance records with digital signature status."
-        actions={
-          <label className={`${common.fieldBlock} ${common.logsDatePicker} ${styles.logsDatePicker}`.trim()} htmlFor="logs_date">
-            <span className={common.fieldLabel}>Date</span>
-            <input
-              id="logs_date"
-              className={common.inputControl}
-              type="date"
-              value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
-            />
-          </label>
-        }
+        subtitle="Session-based attendance sheet with export-ready records."
       />
       <AdminPanel>
-        {isLoading ? <DataLoading message="Loading attendance logs..." /> : null}
+        <div className={styles.controlsWrap}>
+          <div className={styles.primaryFilter}>
+            <label className={common.fieldBlock} htmlFor="session_picker">
+              <span className={common.fieldLabel}>Session</span>
+              <select
+                id="session_picker"
+                className={common.inputControl}
+                value={selectedSessionId}
+                onChange={(event) => setSelectedSessionId(event.target.value)}
+              >
+                <option value="">All sessions</option>
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {toSessionLabel(session)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedSession ? (
+              <p className={styles.sessionHint}>Reviewing: {selectedSession.name}</p>
+            ) : (
+              <p className={styles.sessionHint}>Showing all sessions.</p>
+            )}
+          </div>
+
+          <div className={styles.secondaryFilters}>
+            <label className={common.fieldBlock} htmlFor="logs_date_filter">
+              <span className={common.fieldLabel}>Date</span>
+              <input
+                id="logs_date_filter"
+                className={common.inputControl}
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+              />
+            </label>
+
+            <label className={common.fieldBlock} htmlFor="faculty_filter">
+              <span className={common.fieldLabel}>Faculty</span>
+              <select
+                id="faculty_filter"
+                className={common.inputControl}
+                value={selectedFacultyId}
+                onChange={(event) => setSelectedFacultyId(event.target.value)}
+              >
+                <option value="">All faculty</option>
+                {faculties.map((faculty) => (
+                  <option key={faculty.id} value={faculty.id}>
+                    {faculty.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={common.fieldBlock} htmlFor="attendance_status_filter">
+              <span className={common.fieldLabel}>Attendance Status</span>
+              <select
+                id="attendance_status_filter"
+                className={common.inputControl}
+                value={attendanceStatusFilter}
+                onChange={(event) => setAttendanceStatusFilter(event.target.value)}
+              >
+                {ATTENDANCE_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={common.fieldBlock} htmlFor="signature_status_filter">
+              <span className={common.fieldLabel}>Signature Status</span>
+              <select
+                id="signature_status_filter"
+                className={common.inputControl}
+                value={signatureStatusFilter}
+                onChange={(event) => setSignatureStatusFilter(event.target.value)}
+              >
+                {SIGNATURE_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={common.fieldBlock} htmlFor="sort_by_filter">
+              <span className={common.fieldLabel}>Sort By</span>
+              <select
+                id="sort_by_filter"
+                className={common.inputControl}
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+              >
+                {SORT_BY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={common.fieldBlock} htmlFor="sort_order_filter">
+              <span className={common.fieldLabel}>Order</span>
+              <select
+                id="sort_order_filter"
+                className={common.inputControl}
+                value={sortOrder}
+                onChange={(event) => setSortOrder(event.target.value)}
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </label>
+          </div>
+
+          <div className={styles.actionsRow}>
+            <div className={styles.quickFilterRow}>
+              <button type="button" className={`${common.ghostBtn} ${common.compact}`.trim()} onClick={() => applyQuickFilter('late')}>
+                Late only
+              </button>
+              <button type="button" className={`${common.ghostBtn} ${common.compact}`.trim()} onClick={() => applyQuickFilter('on_time')}>
+                On time only
+              </button>
+              <button
+                type="button"
+                className={`${common.ghostBtn} ${common.compact}`.trim()}
+                onClick={() => applyQuickFilter('missing_checkout')}
+              >
+                Missing check-out
+              </button>
+              <button
+                type="button"
+                className={`${common.ghostBtn} ${common.compact}`.trim()}
+                onClick={() => applyQuickFilter('valid_signature')}
+              >
+                Valid signature only
+              </button>
+            </div>
+            <div className={styles.actionButtons}>
+              <button
+                type="button"
+                className={`${common.ghostBtn} ${common.compact}`.trim()}
+                onClick={resetSecondaryFilters}
+              >
+                Reset filters
+              </button>
+              <button
+                type="button"
+                className={`${common.primaryBtn} ${common.compact}`.trim()}
+                onClick={handleExport}
+                disabled={isExporting || isLoading}
+              >
+                {isExporting ? 'Exporting...' : 'Export CSV'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {isLoading ? <DataLoading message="Loading attendance sheet..." /> : null}
         {error ? <DataError message={error} /> : null}
-        {!isLoading && !error && !hasData ? (
-          <DataEmpty message="No attendance logs for this date." />
+        {!isLoading && !error && !hasRows ? (
+          <DataEmpty
+            message={
+              selectedSessionId
+                ? 'No attendance records match the selected session and filters.'
+                : 'No attendance records found for the selected filters.'
+            }
+          />
         ) : null}
 
-        {!isLoading && !error && hasData ? (
+        {!isLoading && !error && hasRows ? (
           <div className={styles.responsiveBlock}>
             <div className={styles.desktopOnly}>
               <div className={common.tableWrap}>
@@ -150,21 +385,33 @@ export default function AdminAttendanceLogsPage() {
                     <tr>
                       <th>Faculty Name</th>
                       <th>Session</th>
-                      <th>Attendance Type</th>
-                      <th>Time</th>
+                      <th>Time In</th>
+                      <th>Time Out</th>
+                      <th>Attendance Status</th>
                       <th>Signature Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {records.map((record) => (
-                      <tr key={record.id}>
-                        <td>{buildFacultyName(record)}</td>
-                        <td>{record.session_name}</td>
-                        <td>{record.attendance_type}</td>
-                        <td>{formatDateTime(record.check_time)}</td>
+                    {rows.map((row) => (
+                      <tr key={`${row.session_id}-${row.faculty_id}`}>
                         <td>
-                          <span className={`${common.chip} ${common[verificationMap[record.id] || 'muted'] || ''}`.trim()}>
-                            {verificationMap[record.id] || 'unknown'}
+                          <p className={styles.facultyName}>{row.faculty_name}</p>
+                          <p className={styles.facultyEmail}>{row.email}</p>
+                        </td>
+                        <td>
+                          <p className={styles.sessionName}>{row.session_name}</p>
+                          <p className={styles.sessionDate}>{row.date}</p>
+                        </td>
+                        <td>{formatDateTime(row.time_in)}</td>
+                        <td>{formatDateTime(row.time_out)}</td>
+                        <td>
+                          <span className={`${common.chip} ${styles[row.attendance_status.toLowerCase().replace(' ', '_')] || ''}`.trim()}>
+                            {row.attendance_status}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`${common.chip} ${common[row.signature_status] || ''}`.trim()}>
+                            {row.signature_status}
                           </span>
                         </td>
                       </tr>
@@ -176,180 +423,34 @@ export default function AdminAttendanceLogsPage() {
 
             <div className={styles.mobileOnly}>
               <div className={styles.mobileCards}>
-                {records.map((record) => {
-                  const status = verificationMap[record.id] || 'unknown'
-                  const isExpanded = expandedDailyCardId === record.id
-                  return (
-                    <article key={record.id} className={styles.mobileCard}>
-                      <button
-                        type="button"
-                        className={styles.mobileCardToggle}
-                        onClick={() => setExpandedDailyCardId(isExpanded ? null : record.id)}
-                        aria-expanded={isExpanded}
-                      >
-                        <p className={styles.cardTitle}>{buildFacultyName(record)}</p>
-                        <p className={styles.cardMeta}>
-                          {record.session_name} {'\u2022'} {record.attendance_type}
-                        </p>
-                        <div className={styles.cardSummaryRow}>
-                          <span className={styles.cardTime}>{formatDateTime(record.check_time)}</span>
-                          <span className={`${common.chip} ${common[status] || ''}`.trim()}>{status}</span>
-                        </div>
-                      </button>
-
-                      {isExpanded ? (
-                        <div className={styles.cardDetail}>
-                          <p>
-                            <strong>Faculty Name:</strong> {buildFacultyName(record)}
-                          </p>
-                          <p>
-                            <strong>Session:</strong> {record.session_name}
-                          </p>
-                          <p>
-                            <strong>Attendance Type:</strong> {record.attendance_type}
-                          </p>
-                          <p>
-                            <strong>Time:</strong> {formatDateTime(record.check_time)}
-                          </p>
-                          <p>
-                            <strong>Signature Status:</strong> {status}
-                          </p>
-                        </div>
-                      ) : null}
-                    </article>
-                  )
-                })}
+                {rows.map((row) => (
+                  <article key={`${row.session_id}-${row.faculty_id}`} className={styles.mobileCard}>
+                    <p className={styles.cardTitle}>{row.faculty_name}</p>
+                    <p className={styles.cardMeta}>{row.email}</p>
+                    <p className={styles.cardMeta}>{row.session_name}</p>
+                    <p className={styles.cardMeta}>{row.date}</p>
+                    <div className={styles.cardDetailGrid}>
+                      <p>
+                        <strong>Time In:</strong> {formatDateTime(row.time_in)}
+                      </p>
+                      <p>
+                        <strong>Time Out:</strong> {formatDateTime(row.time_out)}
+                      </p>
+                      <p>
+                        <strong>Attendance Status:</strong> {row.attendance_status}
+                      </p>
+                      <p>
+                        <strong>Signature Status:</strong> {row.signature_status}
+                      </p>
+                    </div>
+                  </article>
+                ))}
               </div>
             </div>
           </div>
         ) : null}
       </AdminPanel>
-
-      <AdminPanel title="Faculty Attendance Records" subtitle="Select a faculty member to browse attendance history.">
-        {isFacultyLoading ? <DataLoading message="Loading faculty records..." /> : null}
-        {facultyError ? <DataError message={facultyError} /> : null}
-
-        {!isFacultyLoading && !facultyError && faculties.length === 0 ? (
-          <DataEmpty message="No faculty accounts found." />
-        ) : null}
-
-        {!isFacultyLoading && !facultyError && faculties.length > 0 ? (
-          <>
-            <label className={`${common.fieldBlock} ${common.logsDatePicker} ${styles.logsDatePicker}`.trim()} htmlFor="faculty_picker">
-              <span className={common.fieldLabel}>Faculty Member</span>
-              <select
-                id="faculty_picker"
-                className={common.inputControl}
-                value={selectedFacultyId}
-                onChange={(event) => setSelectedFacultyId(event.target.value)}
-              >
-                {faculties.map((faculty) => (
-                  <option key={faculty.id} value={faculty.id}>
-                    {faculty.full_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {selectedFaculty ? <p className={common.subtleNote}>Viewing history for {selectedFaculty.full_name}</p> : null}
-
-            {!hasFacultyData ? (
-              <DataEmpty message="No attendance records found for this faculty member." />
-            ) : (
-              <div className={styles.responsiveBlock}>
-                <div className={styles.desktopOnly}>
-                  <div className={common.tableWrap}>
-                    <table className={common.adminTable}>
-                      <thead>
-                        <tr>
-                          <th>Faculty Name</th>
-                          <th>Department</th>
-                          <th>Session</th>
-                          <th>Date</th>
-                          <th>Check-in Time</th>
-                          <th>Check-out Time</th>
-                          <th>Attendance Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {facultyRecords.map((record) => (
-                          <tr key={`${record.session_id}-${record.date}`}>
-                            <td>{selectedFaculty?.full_name || 'Unknown'}</td>
-                            <td>{record.department || '-'}</td>
-                            <td>{record.session_name}</td>
-                            <td>{record.date}</td>
-                            <td>{formatDateTime(record.check_in_time)}</td>
-                            <td>{formatDateTime(record.check_out_time)}</td>
-                            <td>{record.attendance_status || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className={styles.mobileOnly}>
-                  <div className={styles.mobileCards}>
-                    {facultyRecords.map((record) => {
-                      const cardKey = `${record.session_id}-${record.date}`
-                      const isExpanded = expandedFacultyCardKey === cardKey
-                      const attendanceType = record.attendance_type || record.attendance_status || '-'
-                      const signatureStatus = record.signature_status || 'N/A'
-                      return (
-                        <article key={cardKey} className={styles.mobileCard}>
-                          <button
-                            type="button"
-                            className={styles.mobileCardToggle}
-                            onClick={() => setExpandedFacultyCardKey(isExpanded ? '' : cardKey)}
-                            aria-expanded={isExpanded}
-                          >
-                            <p className={styles.cardTitle}>{selectedFaculty?.full_name || 'Unknown'}</p>
-                            <p className={styles.cardMeta}>
-                              {record.session_name} {'\u2022'} {attendanceType}
-                            </p>
-                            <div className={styles.cardSummaryRow}>
-                              <span className={styles.cardTime}>
-                                {formatDateTime(record.check_in_time)} {'\u2022'} {formatDateTime(record.check_out_time)}
-                              </span>
-                              <span className={`${common.chip} ${common.muted}`.trim()}>{record.attendance_status || '-'}</span>
-                            </div>
-                          </button>
-
-                          {isExpanded ? (
-                            <div className={styles.cardDetail}>
-                              <p>
-                                <strong>Faculty Name:</strong> {selectedFaculty?.full_name || 'Unknown'}
-                              </p>
-                              <p>
-                                <strong>Session:</strong> {record.session_name}
-                              </p>
-                              <p>
-                                <strong>Attendance Type:</strong> {attendanceType}
-                              </p>
-                              <p>
-                                <strong>Time:</strong> {formatDateTime(record.check_in_time)} {'\u2022'} {formatDateTime(record.check_out_time)}
-                              </p>
-                              <p>
-                                <strong>Signature Status:</strong> {signatureStatus}
-                              </p>
-                              <p>
-                                <strong>Date:</strong> {record.date}
-                              </p>
-                              <p>
-                                <strong>Department:</strong> {record.department || '-'}
-                              </p>
-                            </div>
-                          ) : null}
-                        </article>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        ) : null}
-      </AdminPanel>
     </>
   )
 }
+

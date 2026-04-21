@@ -315,12 +315,27 @@
 }
 
 .muted {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .unknown {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .invalid {
+  background: rgba(255, 92, 92, 0.2);
+  border-color: rgba(255, 92, 92, 0.4);
+  color: #ff8b8b;
+}
+
+.partial {
+  background: rgba(255, 164, 27, 0.2);
+  border-color: rgba(255, 164, 27, 0.45);
+  color: #ffba49;
 }
 
 .sessionItem {

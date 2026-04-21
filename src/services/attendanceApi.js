@@ -23,6 +23,22 @@ export async function getAttendanceByDate(date) {
   return response.data
 }
 
+export async function getAdminAttendanceSheet(params = {}) {
+  const response = await api.get('/admin/attendance-sheet', { params })
+  return response.data
+}
+
+export async function exportAdminAttendanceSheetCsv(params = {}) {
+  const response = await api.get('/admin/attendance-sheet/export-csv', {
+    params,
+    responseType: 'blob',
+  })
+  return {
+    blob: response.data,
+    contentDisposition: response.headers['content-disposition'] || '',
+  }
+}
+
 export async function getFacultyAttendanceRecords(facultyId = '') {
   const params = {}
   if (facultyId) {
