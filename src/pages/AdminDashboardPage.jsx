@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AdminPanel from '../components/admin/AdminPanel'
 import AdminStatCard from '../components/admin/AdminStatCard'
 import { DataEmpty, DataError, DataLoading } from '../components/admin/DataState'
+import { ROUTES } from '../constants/routes'
 import LayoutPageMeta from '../components/layout/LayoutPageMeta'
 import { getAdminSessions, getAttendanceByDate } from '../services/attendanceApi'
 import { getApiErrorMessage } from '../utils/apiError'
-import { formatDateTime, toIsoDate } from '../utils/dateTime'
+import { formatDateTime, formatIsoDate, toIsoDate } from '../utils/dateTime'
 import styles from './AdminDashboardPage.module.css'
 import common from '../styles/common.module.css'
 
 export default function AdminDashboardPage() {
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
   const [todayRecords, setTodayRecords] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -48,6 +51,13 @@ export default function AdminDashboardPage() {
     () => todayRecords.filter((record) => record.attendance_type === 'check-out').length,
     [todayRecords],
   )
+  const recentSessions = useMemo(
+    () =>
+      [...sessions]
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, 6),
+    [sessions],
+  )
 
   return (
     <>
@@ -69,14 +79,26 @@ export default function AdminDashboardPage() {
 
           <div className={common.adminTwoCol}>
             <AdminPanel title="Recent Attendance Sessions" subtitle="Latest 6 sessions">
-              {sessions.length === 0 ? (
+              {recentSessions.length === 0 ? (
                 <DataEmpty message="No attendance sessions yet." />
               ) : (
                 <div>
-                  {sessions.slice(0, 6).map((session) => (
-                    <article key={session.id} className={common.sessionItem}>
+                  {recentSessions.map((session) => (
+                    <article
+                      key={session.id}
+                      className={`${common.sessionItem} ${styles.clickableSessionCard}`.trim()}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`${ROUTES.ADMIN_QR_DISPLAY}?sessionId=${session.id}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          navigate(`${ROUTES.ADMIN_QR_DISPLAY}?sessionId=${session.id}`)
+                        }
+                      }}
+                    >
                       <div>
-                        <h3>{session.name}</h3>
+                        <h3>{`${session.name} (${formatIsoDate(session.start_time)})`}</h3>
                         <p>{session.session_type}</p>
                       </div>
                       <div

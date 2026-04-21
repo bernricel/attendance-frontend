@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
+import { useSearchParams } from 'react-router-dom'
 import AdminPanel from '../components/admin/AdminPanel'
 import { DataEmpty, DataError, DataLoading } from '../components/admin/DataState'
 import LayoutPageMeta from '../components/layout/LayoutPageMeta'
@@ -7,11 +8,17 @@ import { buildAdminQrPresentationRoute } from '../constants/routes'
 import { useSessionQrStatus } from '../hooks/useSessionQrStatus'
 import { deleteAttendanceSession, endAttendanceSession, getAdminSessions } from '../services/attendanceApi'
 import { getApiErrorMessage } from '../utils/apiError'
-import { formatDateTime } from '../utils/dateTime'
+import { formatDateTime, formatIsoDate } from '../utils/dateTime'
 import styles from './AdminQrDisplayPage.module.css'
 import common from '../styles/common.module.css'
 
+function toSessionLabel(session) {
+  const startDate = formatIsoDate(session.start_time)
+  return `${session.name} (${startDate})`
+}
+
 export default function AdminQrDisplayPage() {
+  const [searchParams] = useSearchParams()
   const [sessions, setSessions] = useState([])
   const [selectedId, setSelectedId] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -32,10 +39,15 @@ export default function AdminQrDisplayPage() {
       setDeleteSuccess('')
       try {
         const data = await getAdminSessions()
-        setSessions(data.sessions || [])
-        if (data.sessions?.length) {
+        const fetchedSessions = data.sessions || []
+        setSessions(fetchedSessions)
+        if (fetchedSessions.length) {
+          const preferredId = searchParams.get('sessionId') || searchParams.get('session_id')
+          const preferredSession = preferredId
+            ? fetchedSessions.find((session) => String(session.id) === String(preferredId))
+            : null
           // Default selection: first available session.
-          setSelectedId(String(data.sessions[0].id))
+          setSelectedId(String(preferredSession?.id || fetchedSessions[0].id))
         }
       } catch (apiError) {
         setError(getApiErrorMessage(apiError, 'Failed to load sessions.'))
@@ -44,7 +56,7 @@ export default function AdminQrDisplayPage() {
       }
     }
     loadSessions()
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (!selectedId || !qrStatus) {
@@ -164,7 +176,7 @@ export default function AdminQrDisplayPage() {
               >
                 {sessions.map((session) => (
                   <option key={session.id} value={session.id}>
-                    {session.name}
+                    {toSessionLabel(session)}
                   </option>
                 ))}
               </select>

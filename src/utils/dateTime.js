@@ -11,6 +11,11 @@ export function toIsoDate(value = new Date()) {
   return `${year}-${month}-${day}`
 }
 
+export function formatIsoDate(value) {
+  if (!value) return '-'
+  return toIsoDate(value)
+}
+
 export function monthMatrix(year, month) {
   const firstDay = new Date(year, month, 1)
   const startWeekday = firstDay.getDay()

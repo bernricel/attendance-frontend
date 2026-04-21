@@ -9,7 +9,7 @@ import {
   getFacultyAttendanceRecords,
 } from '../services/attendanceApi'
 import { getApiErrorMessage } from '../utils/apiError'
-import { formatDateTime } from '../utils/dateTime'
+import { formatDateTime, formatIsoDate } from '../utils/dateTime'
 import common from '../styles/common.module.css'
 import styles from './AdminAttendanceLogsPage.module.css'
 
@@ -25,20 +25,19 @@ const SIGNATURE_STATUS_OPTIONS = [
   { value: '', label: 'All signature statuses' },
   { value: 'valid', label: 'Valid' },
   { value: 'invalid', label: 'Invalid' },
-  { value: 'partial', label: 'Partial' },
 ]
 
 const SORT_BY_OPTIONS = [
-  { value: 'faculty_name', label: 'Faculty Name' },
   { value: 'time_in', label: 'Time In' },
   { value: 'time_out', label: 'Time Out' },
   { value: 'attendance_status', label: 'Attendance Status' },
   { value: 'signature_status', label: 'Signature Status' },
+  { value: 'session', label: 'Session' },
 ]
 
 function toSessionLabel(session) {
-  const startDate = formatDateTime(session.start_time)
-  return `${session.name} • ${startDate}`
+  const startDate = formatIsoDate(session.start_time)
+  return `${session.name} (${startDate})`
 }
 
 function normalizeFilename(contentDisposition) {
@@ -65,7 +64,7 @@ export default function AdminAttendanceLogsPage() {
   const [selectedFacultyId, setSelectedFacultyId] = useState('')
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('')
   const [signatureStatusFilter, setSignatureStatusFilter] = useState('')
-  const [sortBy, setSortBy] = useState('faculty_name')
+  const [sortBy, setSortBy] = useState('time_in')
   const [sortOrder, setSortOrder] = useState('asc')
   const [rows, setRows] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -194,7 +193,7 @@ export default function AdminAttendanceLogsPage() {
     setSelectedFacultyId('')
     setAttendanceStatusFilter('')
     setSignatureStatusFilter('')
-    setSortBy('faculty_name')
+    setSortBy('time_in')
     setSortOrder('asc')
   }
 
@@ -224,7 +223,7 @@ export default function AdminAttendanceLogsPage() {
               </select>
             </label>
             {selectedSession ? (
-              <p className={styles.sessionHint}>Reviewing: {selectedSession.name}</p>
+              <p className={styles.sessionHint}>Reviewing: {toSessionLabel(selectedSession)}</p>
             ) : (
               <p className={styles.sessionHint}>Showing all sessions.</p>
             )}
@@ -292,7 +291,7 @@ export default function AdminAttendanceLogsPage() {
             </label>
 
             <label className={common.fieldBlock} htmlFor="sort_by_filter">
-              <span className={common.fieldLabel}>Sort By</span>
+              <span className={common.fieldLabel}>Sort</span>
               <select
                 id="sort_by_filter"
                 className={common.inputControl}
@@ -307,18 +306,25 @@ export default function AdminAttendanceLogsPage() {
               </select>
             </label>
 
-            <label className={common.fieldBlock} htmlFor="sort_order_filter">
+            <div className={common.fieldBlock}>
               <span className={common.fieldLabel}>Order</span>
-              <select
-                id="sort_order_filter"
-                className={common.inputControl}
-                value={sortOrder}
-                onChange={(event) => setSortOrder(event.target.value)}
-              >
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
-            </label>
+              <div className={styles.orderToggle}>
+                <button
+                  type="button"
+                  className={`${common.ghostBtn} ${common.compact} ${sortOrder === 'asc' ? styles.orderActive : ''}`.trim()}
+                  onClick={() => setSortOrder('asc')}
+                >
+                  Ascending
+                </button>
+                <button
+                  type="button"
+                  className={`${common.ghostBtn} ${common.compact} ${sortOrder === 'desc' ? styles.orderActive : ''}`.trim()}
+                  onClick={() => setSortOrder('desc')}
+                >
+                  Descending
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className={styles.actionsRow}>
